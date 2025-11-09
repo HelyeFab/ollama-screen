@@ -159,6 +159,10 @@ export default function Home() {
     setInput("");
     setIsLoading(true);
 
+    // Add empty assistant message that will be updated with streaming content
+    const assistantMessage: Message = { role: "assistant", content: "" };
+    setMessages([...updatedMessages, assistantMessage]);
+
     try {
       const response = await fetch("http://localhost:11434/api/chat", {
         method: "POST",
@@ -166,7 +170,7 @@ export default function Home() {
         body: JSON.stringify({
           model: selectedModel,
           messages: updatedMessages,
-          stream: false,
+          stream: true, // Enable streaming
         }),
       });
 
@@ -174,22 +178,47 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = "";
+      let buffer = "";
 
-      // Validate response structure
-      if (!data || !data.message || !data.message.content) {
-        console.error("Invalid response structure:", data);
-        throw new Error("Invalid response from Ollama server");
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // Decode the chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+
+          // Keep the last incomplete line in the buffer
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                const json = JSON.parse(line);
+                if (json.message?.content) {
+                  accumulatedContent += json.message.content;
+
+                  // Update the assistant message with accumulated content
+                  setMessages([
+                    ...updatedMessages,
+                    { role: "assistant", content: accumulatedContent }
+                  ]);
+                }
+              } catch (e) {
+                // Skip invalid JSON lines
+                console.warn("Failed to parse JSON line:", line);
+              }
+            }
+          }
+        }
       }
 
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.message.content,
-      };
-      const finalMessages = [...updatedMessages, assistantMessage];
-      setMessages(finalMessages);
-
-      // Save chat after receiving response
+      // Save chat after receiving complete response
+      const finalMessages = [...updatedMessages, { role: "assistant", content: accumulatedContent }];
       await saveCurrentChat(finalMessages);
     } catch (error) {
       console.error("Error sending message:", error);
