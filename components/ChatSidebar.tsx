@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiPlus, FiTrash2, FiMessageSquare, FiMenu, FiX } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiMessageSquare } from 'react-icons/fi';
 import { ChatSession, chatDB } from '@/lib/db';
 import { ConfirmDialog } from './ui';
 import { ThemeSwitcher } from './ThemeSwitcher';
@@ -100,6 +100,21 @@ export function ChatSidebar({
       >
         {/* Header */}
         <div className="p-4 border-b border-theme-border space-y-3">
+          {/* Close button - Mobile Only */}
+          <div className="lg:hidden flex justify-end mb-2">
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-2 rounded-xl hover:bg-theme-bg-tertiary active:scale-95 transition-all duration-200 text-theme-text-primary touch-manipulation"
+              aria-label="Close sidebar"
+            >
+              <img
+                src="/icons/close.svg"
+                alt="Close menu"
+                className="w-6 h-6"
+              />
+            </button>
+          </div>
+
           <button
             onClick={onNewChat}
             className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-theme-accent hover:bg-theme-accent-hover active:scale-[0.98] text-white rounded-xl transition-all duration-200 text-base font-semibold shadow-sm touch-manipulation"

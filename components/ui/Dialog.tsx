@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { FiX } from 'react-icons/fi';
 
 interface DialogProps {
   isOpen: boolean;
@@ -99,10 +98,14 @@ export function Dialog({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="ml-auto text-theme-text-tertiary hover:text-theme-text-secondary transition-colors"
+                className="ml-auto p-1 rounded-lg hover:bg-theme-bg-tertiary active:scale-95 transition-all duration-200 text-theme-text-tertiary hover:text-theme-text-secondary touch-manipulation"
                 aria-label="Close dialog"
               >
-                <FiX size={24} />
+                <img
+                  src="/icons/close.svg"
+                  alt="Close"
+                  className="w-6 h-6"
+                />
               </button>
             )}
           </div>

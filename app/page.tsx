@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FiSend, FiDownload, FiSettings, FiChevronDown, FiMenu } from "react-icons/fi";
+import { FiSend, FiDownload, FiSettings, FiChevronDown } from "react-icons/fi";
 import { Dialog, ConfirmDialog, Dropdown, DropdownItem } from "@/components/ui";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
@@ -315,9 +315,16 @@ export default function Home() {
         <header className="sticky top-0 z-50 bg-theme-bg-secondary/95 backdrop-blur-sm shadow-sm border-b border-theme-border">
           {/* Desktop Header - Single Row */}
           <div className="hidden lg:flex items-center justify-between p-4">
-            <h1 className="text-2xl font-bold text-theme-text-primary">
-              Ollama Screen
-            </h1>
+            <div className="flex items-center gap-3">
+              <img
+                src="/icons/lama.svg"
+                alt="Ollama Logo"
+                className="w-7 h-7 flex-shrink-0"
+              />
+              <h1 className="text-2xl font-title font-bold text-theme-text-primary">
+                Ollama Screen
+              </h1>
+            </div>
             <div className="flex gap-2 items-center">
               <ThemeSwitcher />
               <Dropdown
@@ -354,16 +361,24 @@ export default function Home() {
                 aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
                 aria-expanded={sidebarOpen}
               >
-                <FiMenu 
-                  size={24} 
-                  className={`transition-transform duration-300 ${sidebarOpen ? 'rotate-90' : ''}`}
+                <img
+                  src="/icons/menu.svg"
+                  alt={sidebarOpen ? 'Close menu' : 'Open menu'}
+                  className={`w-6 h-6 transition-transform duration-300 ${sidebarOpen ? 'rotate-90' : ''}`}
                 />
               </button>
 
-              {/* Center: App Name - Bold Typography */}
-              <h1 className="flex-1 text-center text-lg font-bold text-theme-text-primary truncate px-2">
-                Ollama Screen
-              </h1>
+              {/* Center: App Name with Logo - Bold Typography */}
+              <div className="flex-1 flex items-center justify-center gap-2 px-2">
+                <img
+                  src="/icons/lama.svg"
+                  alt="Ollama Logo"
+                  className="w-5 h-5 flex-shrink-0"
+                />
+                <h1 className="text-lg font-title font-bold text-theme-text-primary truncate">
+                  Ollama Screen
+                </h1>
+              </div>
 
               {/* Right: Action Buttons */}
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -476,10 +491,19 @@ export default function Home() {
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`flex ${
+            className={`flex items-start gap-2 ${
               message.role === "user" ? "justify-end" : "justify-start"
             }`}
           >
+            {message.role === "assistant" && (
+              <div className="flex-shrink-0 mt-1">
+                <img
+                  src="/icons/lama.svg"
+                  alt="Ollama"
+                  className="w-6 h-6 md:w-7 md:h-7"
+                />
+              </div>
+            )}
             <div
               className={`max-w-[85%] md:max-w-[80%] rounded-lg p-4 text-base md:text-lg leading-relaxed ${
                 message.role === "user"
@@ -489,10 +513,26 @@ export default function Home() {
             >
               <p className="whitespace-pre-wrap break-words">{message.content}</p>
             </div>
+            {message.role === "user" && (
+              <div className="flex-shrink-0 mt-1">
+                <img
+                  src="/icons/coffee.svg"
+                  alt="User"
+                  className="w-6 h-6 md:w-7 md:h-7"
+                />
+              </div>
+            )}
           </div>
         ))}
         {isLoading && (
-          <div className="flex justify-start">
+          <div className="flex items-start gap-2 justify-start">
+            <div className="flex-shrink-0 mt-1">
+              <img
+                src="/icons/lama.svg"
+                alt="Ollama"
+                className="w-6 h-6 md:w-7 md:h-7 animate-pulse"
+              />
+            </div>
             <div className="bg-theme-bg-secondary border border-theme-border rounded-lg p-4 shadow">
               <p className="text-theme-text-secondary text-base md:text-lg">Thinking...</p>
             </div>

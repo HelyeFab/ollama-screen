@@ -19,6 +19,15 @@
   font-display: swap;
 }
 
+/* Custom Font - Playwrite HU */
+@font-face {
+  font-family: 'Playwrite HU';
+  src: url('/fonts/Elms_Sans,Playwrite_HU/Playwrite_HU/PlaywriteHU-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* Default theme colors (set by ThemeProvider) */
   --bg-primary: 249 250 251;
@@ -39,6 +48,10 @@ body {
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  .font-title {
+    font-family: 'Playwrite HU', 'Elms Sans', cursive, sans-serif;
   }
 }
 
