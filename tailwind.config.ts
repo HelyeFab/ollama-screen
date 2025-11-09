@@ -26,6 +26,15 @@ export default {
         'theme-accent': 'rgb(var(--accent) / <alpha-value>)',
         'theme-accent-hover': 'rgb(var(--accent-hover) / <alpha-value>)',
       },
+      animation: {
+        'shimmer': 'shimmer 2s linear infinite',
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
     },
   },
   plugins: [],
