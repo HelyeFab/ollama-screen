@@ -34,6 +34,8 @@ export default function Home() {
   const [showModelManager, setShowModelManager] = useState(false);
   const [newModelName, setNewModelName] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadStatus, setDownloadStatus] = useState("");
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -159,6 +161,10 @@ export default function Home() {
     setInput("");
     setIsLoading(true);
 
+    // Add empty assistant message that will be updated with streaming content
+    const assistantMessage: Message = { role: "assistant", content: "" };
+    setMessages([...updatedMessages, assistantMessage]);
+
     try {
       const response = await fetch("http://localhost:11434/api/chat", {
         method: "POST",
@@ -166,7 +172,7 @@ export default function Home() {
         body: JSON.stringify({
           model: selectedModel,
           messages: updatedMessages,
-          stream: false,
+          stream: true, // Enable streaming
         }),
       });
 
@@ -174,22 +180,52 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = "";
+      let buffer = "";
 
-      // Validate response structure
-      if (!data || !data.message || !data.message.content) {
-        console.error("Invalid response structure:", data);
-        throw new Error("Invalid response from Ollama server");
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // Decode the chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+
+          // Keep the last incomplete line in the buffer
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                const json = JSON.parse(line);
+                if (json.message?.content) {
+                  accumulatedContent += json.message.content;
+
+                  // Update the assistant message with accumulated content efficiently
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    newMessages[newMessages.length - 1] = {
+                      role: "assistant",
+                      content: accumulatedContent
+                    };
+                    return newMessages;
+                  });
+                }
+              } catch (e) {
+                // Skip invalid JSON lines
+                console.warn("Failed to parse JSON line:", line);
+              }
+            }
+          }
+        }
       }
 
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.message.content,
-      };
+      // Save chat after receiving complete response
+      const assistantMessage: Message = { role: "assistant", content: accumulatedContent };
       const finalMessages = [...updatedMessages, assistantMessage];
-      setMessages(finalMessages);
-
-      // Save chat after receiving response
       await saveCurrentChat(finalMessages);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -210,42 +246,92 @@ export default function Home() {
   const pullModel = async () => {
     if (!newModelName.trim() || isDownloading) return;
     setIsDownloading(true);
+    setDownloadProgress(0);
+    setDownloadStatus("Starting download...");
 
     try {
       const response = await fetch("http://localhost:11434/api/pull", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newModelName }),
+        body: JSON.stringify({
+          name: newModelName,
+          stream: true
+        }),
       });
 
-      if (response.ok) {
-        setAlertDialog({
-          isOpen: true,
-          title: 'Success',
-          message: `Model ${newModelName} is being downloaded!`,
-          variant: 'success',
-        });
-        setNewModelName("");
-        // Refresh model list after a delay
-        setTimeout(fetchModels, 2000);
-      } else {
-        setAlertDialog({
-          isOpen: true,
-          title: 'Error',
-          message: 'Failed to download model',
-          variant: 'error',
-        });
+      if (!response.ok) {
+        throw new Error('Failed to start download');
       }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                const json = JSON.parse(line);
+
+                // Update progress
+                if (json.total && json.completed) {
+                  const progress = (json.completed / json.total) * 100;
+                  setDownloadProgress(Math.round(progress));
+
+                  // Format sizes in GB
+                  const completedGB = (json.completed / (1024 * 1024 * 1024)).toFixed(2);
+                  const totalGB = (json.total / (1024 * 1024 * 1024)).toFixed(2);
+                  setDownloadStatus(`Downloading: ${completedGB} GB / ${totalGB} GB`);
+                }
+
+                // Update status message
+                if (json.status) {
+                  if (json.status === 'success') {
+                    setDownloadStatus('Download complete!');
+                    setDownloadProgress(100);
+                  } else if (!json.total) {
+                    setDownloadStatus(json.status);
+                  }
+                }
+              } catch (e) {
+                console.warn("Failed to parse download progress:", line);
+              }
+            }
+          }
+        }
+      }
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Model ${newModelName} downloaded successfully!`,
+        variant: 'success',
+      });
+      setNewModelName("");
+
+      // Refresh model list
+      setTimeout(fetchModels, 1000);
+
     } catch (error) {
       console.error("Error pulling model:", error);
       setAlertDialog({
         isOpen: true,
-        title: 'Connection Error',
-        message: 'Could not connect to Ollama server',
+        title: 'Download Error',
+        message: error instanceof Error ? error.message : 'Could not connect to Ollama server',
         variant: 'error',
       });
     } finally {
       setIsDownloading(false);
+      setDownloadProgress(0);
+      setDownloadStatus("");
     }
   };
 
@@ -442,6 +528,32 @@ export default function Home() {
                 {isDownloading ? "Downloading..." : "Download"}
               </button>
             </div>
+
+            {/* Download Progress Indicator */}
+            {isDownloading && (
+              <div className="mt-4 p-4 bg-theme-bg-tertiary rounded-lg border border-theme-border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-theme-text-primary">
+                    {downloadStatus || "Preparing download..."}
+                  </span>
+                  <span className="text-sm font-bold text-blue-500">
+                    {downloadProgress}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300 ease-out relative overflow-hidden"
+                    style={{ width: `${downloadProgress}%` }}
+                  >
+                    {/* Animated shimmer effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                  </div>
+                </div>
+                <p className="text-xs text-theme-text-secondary mt-2">
+                  Downloading {newModelName}...
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Installed models */}
