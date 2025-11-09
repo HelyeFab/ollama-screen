@@ -17,7 +17,9 @@
       "Bash(node convert-icon.js:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File create-shortcut.ps1)",
       "Bash(node convert-to-ico.js:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(cmd //c \"C:\\Users\\esfab\\Documents\\DevProjects\\ollama-screen\\start-ollama-screen.bat\")",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

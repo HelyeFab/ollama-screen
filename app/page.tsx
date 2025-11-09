@@ -393,24 +393,6 @@ export default function Home() {
                 </button>
               </div>
             </div>
-
-            {/* Model Selector - Full Width Below */}
-            <div className="px-4 pb-3">
-              <Dropdown
-                trigger={
-                  <button className="w-full px-4 py-3 border border-theme-border rounded-xl bg-theme-bg-tertiary/50 text-theme-text-primary hover:bg-theme-bg-tertiary active:scale-[0.98] transition-all duration-200 flex items-center justify-between gap-2 text-base font-medium touch-manipulation">
-                    <span className="truncate">{selectedModel || 'Select Model'}</span>
-                    <FiChevronDown size={18} className="flex-shrink-0 transition-transform duration-200" />
-                  </button>
-                }
-                items={models.map((model) => ({
-                  label: `${model.name} (${formatSize(model.size)})`,
-                  value: model.name,
-                }))}
-                onSelect={(value) => setSelectedModel(value)}
-                align="right"
-              />
-            </div>
           </div>
         </header>
 
@@ -418,6 +400,27 @@ export default function Home() {
       {showModelManager && (
         <div className="bg-theme-bg-secondary border-b border-theme-border p-4">
           <h3 className="font-bold mb-4 text-lg text-theme-text-primary">Model Manager</h3>
+
+          {/* Model Selector - Mobile Only */}
+          <div className="lg:hidden mb-4">
+            <label className="block text-sm font-semibold text-theme-text-secondary mb-2">
+              Select Model
+            </label>
+            <Dropdown
+              trigger={
+                <button className="w-full px-4 py-3 border border-theme-border rounded-xl bg-theme-bg-tertiary/50 text-theme-text-primary hover:bg-theme-bg-tertiary active:scale-[0.98] transition-all duration-200 flex items-center justify-between gap-2 text-base font-medium touch-manipulation">
+                  <span className="truncate">{selectedModel || 'Select Model'}</span>
+                  <FiChevronDown size={18} className="flex-shrink-0 transition-transform duration-200" />
+                </button>
+              }
+              items={models.map((model) => ({
+                label: `${model.name} (${formatSize(model.size)})`,
+                value: model.name,
+              }))}
+              onSelect={(value) => setSelectedModel(value)}
+              align="right"
+            />
+          </div>
 
           {/* Download new model */}
           <div className="mb-4">
