@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { FiSend, FiDownload, FiSettings, FiChevronDown } from "react-icons/fi";
 import { Dialog, ConfirmDialog, Dropdown, DropdownItem } from "@/components/ui";
 import { ChatSidebar } from "@/components/ChatSidebar";
@@ -18,6 +18,45 @@ type Message = {
   role: "user" | "assistant";
   content: string;
 };
+
+// Memoized message component to prevent unnecessary re-renders
+const MessageBubble = memo(({ message }: { message: Message }) => (
+  <div
+    className={`flex items-start gap-2 ${
+      message.role === "user" ? "justify-end" : "justify-start"
+    }`}
+  >
+    {message.role === "assistant" && (
+      <div className="flex-shrink-0 mt-1">
+        <img
+          src="/icons/lama.svg"
+          alt="Ollama"
+          className="w-6 h-6 md:w-7 md:h-7"
+        />
+      </div>
+    )}
+    <div
+      className={`max-w-[85%] md:max-w-[80%] rounded-lg p-4 text-base md:text-lg leading-relaxed ${
+        message.role === "user"
+          ? "bg-theme-accent text-white"
+          : "bg-theme-bg-secondary text-theme-text-primary shadow border border-theme-border"
+      }`}
+    >
+      <p className="whitespace-pre-wrap break-words">{message.content}</p>
+    </div>
+    {message.role === "user" && (
+      <div className="flex-shrink-0 mt-1">
+        <img
+          src="/icons/coffee.svg"
+          alt="User"
+          className="w-6 h-6 md:w-7 md:h-7"
+        />
+      </div>
+    )}
+  </div>
+));
+
+MessageBubble.displayName = 'MessageBubble';
 
 type Model = {
   name: string;
@@ -73,8 +112,9 @@ export default function Home() {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    // Use instant scroll during streaming for better performance
+    messagesEndRef.current?.scrollIntoView({ behavior: isLoading ? "auto" : "smooth" });
+  }, [messages, isLoading]);
 
   const fetchModels = async () => {
     try {
@@ -166,13 +206,14 @@ export default function Home() {
     setMessages([...updatedMessages, assistantMessage]);
 
     try {
+      // Call Ollama directly to bypass any proxy buffering
       const response = await fetch("http://localhost:11434/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: selectedModel,
           messages: updatedMessages,
-          stream: true, // Enable streaming
+          stream: true,
         }),
       });
 
@@ -193,10 +234,9 @@ export default function Home() {
           // Decode the chunk and add to buffer
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
-
-          // Keep the last incomplete line in the buffer
           buffer = lines.pop() || "";
 
+          // Process each complete JSON line immediately
           for (const line of lines) {
             if (line.trim()) {
               try {
@@ -204,7 +244,7 @@ export default function Home() {
                 if (json.message?.content) {
                   accumulatedContent += json.message.content;
 
-                  // Update the assistant message with accumulated content efficiently
+                  // Update UI immediately for each token
                   setMessages((prev) => {
                     const newMessages = [...prev];
                     newMessages[newMessages.length - 1] = {
@@ -222,6 +262,16 @@ export default function Home() {
           }
         }
       }
+
+      // Final update to ensure all content is displayed
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[newMessages.length - 1] = {
+          role: "assistant",
+          content: accumulatedContent
+        };
+        return newMessages;
+      });
 
       // Save chat after receiving complete response
       const assistantMessage: Message = { role: "assistant", content: accumulatedContent };
@@ -604,40 +654,7 @@ export default function Home() {
           </div>
         )}
         {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex items-start gap-2 ${
-              message.role === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
-            {message.role === "assistant" && (
-              <div className="flex-shrink-0 mt-1">
-                <img
-                  src="/icons/lama.svg"
-                  alt="Ollama"
-                  className="w-6 h-6 md:w-7 md:h-7"
-                />
-              </div>
-            )}
-            <div
-              className={`max-w-[85%] md:max-w-[80%] rounded-lg p-4 text-base md:text-lg leading-relaxed ${
-                message.role === "user"
-                  ? "bg-theme-accent text-white"
-                  : "bg-theme-bg-secondary text-theme-text-primary shadow border border-theme-border"
-              }`}
-            >
-              <p className="whitespace-pre-wrap break-words">{message.content}</p>
-            </div>
-            {message.role === "user" && (
-              <div className="flex-shrink-0 mt-1">
-                <img
-                  src="/icons/coffee.svg"
-                  alt="User"
-                  className="w-6 h-6 md:w-7 md:h-7"
-                />
-              </div>
-            )}
-          </div>
+          <MessageBubble key={index} message={message} />
         ))}
         {isLoading && (
           <div className="flex items-start gap-2 justify-start">
